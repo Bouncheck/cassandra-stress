@@ -17,6 +17,9 @@
  */
 package org.apache.cassandra.stress;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -266,7 +269,17 @@ public class StressAction implements Runnable
 
         if (durationUnits != null)
         {
-            Uninterruptibles.sleepUninterruptibly(duration, durationUnits);
+            for(long ddd = 0; ddd < duration; ddd+=3) {
+                Uninterruptibles.sleepUninterruptibly(3, durationUnits);
+
+                for (int i = 0; i < threadCount; i++)
+                {
+                    System.out.println("Consumers[" + i + "] success == " + consumers[i].success + "  , doneLatch == " + consumers[i].done);
+                }
+                System.out.println("thread dump:\n");
+                System.out.println(threadDump(true, true));
+                System.out.flush();
+            }
             workManager.stop();
         }
         else if (opCount <= 0)
@@ -299,6 +312,7 @@ public class StressAction implements Runnable
         if (!success)
             return null;
 
+        System.out.println("Stress action returning");
         return metrics;
     }
 
@@ -526,5 +540,14 @@ public class StressAction implements Runnable
             opMeasurement.err = err;
             measurementsReporting.offer(opMeasurement);
         }
+    }
+
+    private static String threadDump(boolean lockedMonitors, boolean lockedSynchronizers) {
+        StringBuffer threadDump = new StringBuffer(System.lineSeparator());
+        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        for(ThreadInfo threadInfo : threadMXBean.dumpAllThreads(lockedMonitors, lockedSynchronizers)) {
+            threadDump.append(threadInfo.toString());
+        }
+        return threadDump.toString();
     }
 }
